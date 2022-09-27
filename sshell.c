@@ -36,7 +36,7 @@ int main(void)
                 if (!strcmp(cmd, "exit")) {
                         fprintf(stderr, "Bye...\n");
                         break;
-                }
+                } 
 
                 /* Regular command */
                 retval = system(cmd);
