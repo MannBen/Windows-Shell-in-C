@@ -5,7 +5,7 @@
 
 #define CMDLINE_MAX 512
 
-#cd /home/cs150jp/public/p1/
+//cd /home/cs150jp/public/p1/
 int main(void)
 {
         char cmd[CMDLINE_MAX];
