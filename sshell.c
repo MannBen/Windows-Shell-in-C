@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+//#include <sys/wait.h> 
+
 
 #define CMDLINE_MAX 512
 
@@ -12,7 +14,8 @@ int main(void)
 
         while (1) {
                 char *nl;
-                int retval;
+                char *arguments[16];
+                int inc = 1;
 
                 /* Print prompt */
                 printf("sshell@ucd$ ");
@@ -33,48 +36,60 @@ int main(void)
                         *nl = '\0';
                 }
                 /* Builtin command */
+                // this is the command for exit
                 if (!strcmp(cmd, "exit")) {
                         fprintf(stderr, "Bye...\n");
                         break;
                 } 
+                // the is the command for pwd 
+                if (!strcmp(cmd, "pwd")) {
+                        char workdir[CMDLINE_MAX];
+                        printf("CURRENT DIR: %s\n", getcwd(workdir, CMDLINE_MAX));
+                        continue;
+                } 
 
-                /* Regular command */
-                // retval = system(cmd);
+
+                //add initial token
+                char *token = strtok(cmd, " ");
+                arguments[0] = token;
+                
+   
+                while(token != NULL){
+                        //make object 
+                        token = strtok(NULL, " ");
+                        // add token to array 
+                        arguments[inc] = token;
+                        inc++; 
+                }
+
+                if (!strcmp(arguments[0], "cd")) {
+                       chdir(arguments[1]);
+                       continue;
+                } 
 
                 pid_t pid;
-                /* date - in
-                output: 
-                ./date
-                Return status vaue for 'date': 0
-                */
-
-                /*
-                        char *args[] = { argv[counter], NULL };
-                        execvp(args[0], args);
-
-
-                        char *cmd = "date";
-                        char *args[] = { cmd, "ECS150", NULL};
-                */
                 pid = fork();
+                 int status;
+
                 if (pid == 0) {
                         // child
-                        char *args[] = { cmd, NULL };
-                        retval = execvp(cmd, args); //WEXITSTATUS?
+                        char *args[] = { arguments[0], arguments[1], arguments[2], arguments[3], 
+                                         arguments[4], arguments[5], arguments[6], arguments[7], 
+                                         arguments[8], arguments[9], arguments[10], arguments[11], 
+                                         arguments[12], arguments[13], arguments[14], arguments[15]};
+                        execvp(arguments[0], args); 
                         perror("execvp");
                         exit(1);
                 } else if (pid > 0) {
                         // parent
-                        int status;
                         waitpid(pid, &status, 0);
-                        //printf("Child returned %d/n", WEXITSTATUS(status));
                 }else {
                         perror("fork");
                         exit(1);
                 }
-
+                // show status 
                 fprintf(stderr, "+ completed '%s' [%d]\n",
-                        cmd, retval);
+                        cmd, WEXITSTATUS(status));
         }
 
         return EXIT_SUCCESS;
