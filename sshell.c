@@ -2,20 +2,203 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-//#include <sys/wait.h> 
-
+#include <fcntl.h>
+#include <sys/wait.h>
 
 #define CMDLINE_MAX 512
+ 
 
 //cd /home/cs150jp/public/p1/ 
+
+
+// making a struct which will make an array of string args to char args*[] for execvp
+// struct cmdArgs{
+//        char *arguments[16];
+// }
+
+int argHandler(char* arguments[], char []); 
+void createProcess(char *[]);
+
+
+void createProcess(char *cleanedArguments[]){
+                pid_t pid;
+                pid = fork();
+                int status;
+
+
+                if (pid == 0) {
+                        // child
+                          //printf("args: %s\n",arguments[(inc - 2)]);
+                        // if (toFileBool){
+                        //       //  printf("args: %s\n",arguments[(inc - 2)]);
+                        //         toFileFD = open(arguments[(inc - 2)], O_WRONLY | O_CREAT, 0644);
+                        //         savedSTDO = dup(STDOUT_FILENO);
+                        //         dup2(toFileFD, STDOUT_FILENO);
+                        //         close(toFileFD);
+                        // }
+
+                        // printf("cmd raw: %s\n",cmd);
+                         //cleaned arguments
+                        execvp(cleanedArguments[0], cleanedArguments); 
+                        perror("execvp");
+                        exit(1);
+                } else if (pid > 0) {
+                        // parent
+                        waitpid(pid, &status, 0);
+                        //return to STDO
+                        // dup2(savedSTDO, toFileFD);
+                        // close(savedSTDO);
+                        // toFileBool = 0;
+                }else {
+                        perror("fork");
+                        exit(1);
+                }
+
+                     fprintf(stderr, "+ completed '%s' [%d]\n",
+                        cleanedArguments[0], WEXITSTATUS(status)); //change to full command string later
+}
+void createProcessWithOutputRedirection(char *cleanedArguments[], char* outputFile){
+                pid_t pid;
+                pid = fork();
+                int status, toFileFD;
+
+
+                if (pid == 0) {
+                        // child
+                          //printf("args: %s\n",arguments[(inc - 2)]);
+                   
+                        toFileFD = open(outputFile, O_WRONLY | O_CREAT, 0644);
+                        dup2(toFileFD, STDOUT_FILENO);
+                        close(toFileFD);
+                        execvp(cleanedArguments[0], cleanedArguments); 
+                        perror("execvp");
+                        exit(1);
+                } else if (pid > 0) {
+                        // parent
+                        waitpid(pid, &status, 0);
+                        //return to STDO
+                        // dup2(savedSTDO, toFileFD);
+                        // close(savedSTDO);
+                        // toFileBool = 0;
+                }else {
+                        perror("fork");
+                        exit(1);
+                }
+
+                     fprintf(stderr, "+ completed '%s' [%d]\n",
+                        cleanedArguments[0], WEXITSTATUS(status)); //change to full command string later
+}
+
+int argHandler(char* arguments[], char workdir[]) {
+        int currPos, toFileFD;    
+        //char workdir[512];
+        char *cleanedArguments[16]; 
+        char *n1;
+        
+        //n2 = strchr(cmd, '\n');
+        //n3 = strchr(cmd, '\n');    
+        // > 
+        // < 
+        // | 
+        
+        //echo hello world > test | cat test 
+        // echo echo test | 11
+        
+        while(arguments[currPos] != NULL){
+               n1 = strchr(arguments[currPos], '>');
+               //if not < > >&  | add to cleanargs 
+               //else deal with symbol
+               //char *output = strchr(cmd, '>');
+
+               // If not a > < or | then go in if statement  
+               if((n1 == 0) ){
+                //    || (strcmp(arguments[currPos], "<") != 0)
+                //    || (strcmp(arguments[currPos], "|") != 0)) 
+                        cleanedArguments[currPos] = arguments[currPos];
+                        printf("args: %s\t%d\n", cleanedArguments[currPos], currPos);
+                        currPos++;
+                        }
+               else{   
+                        if(n1 != 0) {
+                                //  toFileFD = open(arguments[currPos++], O_WRONLY | O_CREAT, 0644);
+                                //  savedSTDO = dup(STDOUT_FILENO);
+                                //  dup2(toFileFD, STDOUT_FILENO);
+                                //  close(toFileFD);
+                                //  currPos++;
+
+
+                                // dup2(savedSTDO, toFileFD);
+                                // close(savedSTDO);
+                                printf("In statement\n");
+                                cleanedArguments[currPos] = NULL;
+                                createProcessWithOutputRedirection(cleanedArguments, arguments[currPos+1]);
+                                currPos += 2;
+                                break; // this will then break out of the else and continue going through argumetns
+                        
+                         } else if(strcmp(arguments[currPos], "<") == 0) {
+                                //then handle <
+                                break;
+                         }
+                         else{
+                                cleanedArguments[currPos] = NULL;
+                                createProcess(cleanedArguments);
+                         }
+                         
+
+                        break;
+               }
+               // check for pipe 
+               //checkpipe() which will be like below
+               // can be up to 3 pipe signs on the same command line 
+               /*
+                if  (strcmp(arguments[currPos], "|") != 0) {
+                        // process 1 | process 2 | process 3
+                        
+                }
+
+
+               */
+        }
+     
+        // /* Builtin command */
+        // //This will be the exit command 
+        if (!strcmp(cleanedArguments[0], "exit")) {
+                fprintf(stderr, "Bye...\n");
+                exit(0);
+        } 
+        // the is the command for pwd 
+        else if (!strcmp(cleanedArguments[0], "pwd")) {
+                printf("CURRENT DIR: %s\n", getcwd(workdir, CMDLINE_MAX));
+        } 
+        else if (!strcmp(cleanedArguments[0], "cd")) {
+               chdir(cleanedArguments[1]); 
+        } 
+        // else if(strcmp(arguments[currPos], ">") == 0){
+                
+        // }
+        else{
+
+        }
+
+        // cleanedArguments[currPos] = NULL;
+        // createProcess(cleanedArguments);
+        //if > handleioredirection(cleanargs, fd)
+     
+        return 0;
+
+}
+
+
 int main(void)
 {
         char cmd[CMDLINE_MAX];
+        char workdir[CMDLINE_MAX];
+        char *arguments[16];
+        int toFileBool = 0;
 
         while (1) {
-                char *nl;
-                char *arguments[16];
-                int inc = 1;
+                char *nl, *n2;
+                int inc = 1, toFileFD, savedSTDO;
 
                 /* Print prompt */
                 printf("sshell@ucd$ ");
@@ -23,6 +206,7 @@ int main(void)
 
                 /* Get command line */
                 fgets(cmd, CMDLINE_MAX, stdin);
+                //printf("cmd raw: %s\n",cmd);
 
                 /* Print command line if stdin is not provided by terminal */
                 if (!isatty(STDIN_FILENO)) {
@@ -35,61 +219,77 @@ int main(void)
                 if (nl) {
                         *nl = '\0';
                 }
-                /* Builtin command */
-                // this is the command for exit
-                if (!strcmp(cmd, "exit")) {
-                        fprintf(stderr, "Bye...\n");
-                        break;
-                } 
-                // the is the command for pwd 
-                if (!strcmp(cmd, "pwd")) {
-                        char workdir[CMDLINE_MAX];
-                        printf("CURRENT DIR: %s\n", getcwd(workdir, CMDLINE_MAX));
-                        continue;
-                } 
+               
+                /* find > characters */
+                // n2 = strchr(cmd, '>');
+                // if(n2){
+                //         *n2 = ' ';
+                //         toFileBool = 1;
+                // }
+
+                //printf("cmd raw: %s\n",cmd);
+
+               
 
 
+                //raw tokens
                 //add initial token
                 char *token = strtok(cmd, " ");
                 arguments[0] = token;
-                
-   
-                while(token != NULL){
+
+
+                while(token != NULL) {
                         //make object 
+                        //printf("token1: %s\t%d\n",token, inc);
                         token = strtok(NULL, " ");
-                        // add token to array 
-                        arguments[inc] = token;
+                        arguments[inc] = token;// add token to arguments
                         inc++; 
+                       // printf("token2: %s\t%d\n",token, inc);
                 }
 
-                if (!strcmp(arguments[0], "cd")) {
-                       chdir(arguments[1]);
-                       continue;
-                } 
+        
+                argHandler(arguments, workdir);
 
-                pid_t pid;
-                pid = fork();
-                 int status;
+                // pid_t pid;
+                // pid = fork();
+                // int status;
 
-                if (pid == 0) {
-                        // child
-                        char *args[] = { arguments[0], arguments[1], arguments[2], arguments[3], 
-                                         arguments[4], arguments[5], arguments[6], arguments[7], 
-                                         arguments[8], arguments[9], arguments[10], arguments[11], 
-                                         arguments[12], arguments[13], arguments[14], arguments[15]};
-                        execvp(arguments[0], args); 
-                        perror("execvp");
-                        exit(1);
-                } else if (pid > 0) {
-                        // parent
-                        waitpid(pid, &status, 0);
-                }else {
-                        perror("fork");
-                        exit(1);
-                }
+
+                // if (pid == 0) {
+                //         // child
+                //           //printf("args: %s\n",arguments[(inc - 2)]);
+                //         if (toFileBool){
+                //               //  printf("args: %s\n",arguments[(inc - 2)]);
+                //                 toFileFD = open(arguments[(inc - 2)], O_WRONLY | O_CREAT, 0644);
+                //                 savedSTDO = dup(STDOUT_FILENO);
+                //                 dup2(toFileFD, STDOUT_FILENO);
+                //                 close(toFileFD);
+                //         }
+
+                //         // printf("cmd raw: %s\n",cmd);
+                //         char *args[] = { arguments[0], arguments[1], arguments[2], arguments[3], 
+                //                          arguments[4], arguments[5], arguments[6], arguments[7], 
+                //                          arguments[8], arguments[9], arguments[10], arguments[11], 
+                //                          arguments[12], arguments[13], arguments[14], arguments[15]}; //cleaned arguments
+                //         execvp(arguments[0], args); 
+                //         perror("execvp");
+                //         exit(1);
+                // } else if (pid > 0) {
+                //         // parent
+                //         waitpid(pid, &status, 0);
+                //         //return to STDO
+                //         dup2(savedSTDO, toFileFD);
+                //         close(savedSTDO);
+                //         toFileBool = 0;
+                // }else {
+                //         perror("fork");
+                //         exit(1);
+                // }
+
+
                 // show status 
-                fprintf(stderr, "+ completed '%s' [%d]\n",
-                        cmd, WEXITSTATUS(status));
+                // fprintf(stderr, "+ completed '%s' [%d]\n",
+                //         cmdcopy, WEXITSTATUS(status));
         }
 
         return EXIT_SUCCESS;
