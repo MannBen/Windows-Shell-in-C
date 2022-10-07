@@ -7,102 +7,86 @@
 #include <stdbool.h>
 
 #define CMDLINE_MAX 512
- 
-//cd /home/cs150jp/public/p1/ 
+
+//cd /home/cs150jp/public/p1/
 
 // making a struct which will make an array of string args to char args*[] for execvp
 // struct cmdArgs{
 //        char *arguments[16];
 // }
 
-int argHandler(char* arguments[], char []); 
-void createProcess(char *[]);
+int argHandler(char *[], char []);
+void createProcess(char *[], char *[]);
+void createProcessWithOutputRedirection(char *[], char*);
+void createPipes(char *[], char*[]);
 
-void createProcess(char *cleanedArguments[]){
-                pid_t pid;
-                pid = fork();
-                int status;
+int main(void)
+{
+    // Initialize variables for cmd line,
+    // work directory and an array to parse arguments
+    char cmd[CMDLINE_MAX];
+    char workdir[CMDLINE_MAX];
+    char *arguments[16];
 
+    while (1) {
+        char *nl;       // variable for getting rid of new line from fgets
+        int inc = 1;    // increment variable for adding to arguments array
 
-                if (pid == 0) {
-                        // child
-                          //printf("args: %s\n",arguments[(inc - 2)]);
-                        // if (toFileBool){
-                        //       //  printf("args: %s\n",arguments[(inc - 2)]);
-                        //         toFileFD = open(arguments[(inc - 2)], O_WRONLY | O_CREAT, 0644);
-                        //         savedSTDO = dup(STDOUT_FILENO);
-                        //         dup2(toFileFD, STDOUT_FILENO);
-                        //         close(toFileFD);
-                        // }
+        /* Print prompt */
+        printf("sshell@ucd$ ");
+        fflush(stdout);
 
-                        // printf("cmd raw: %s\n",cmd);
-                         //cleaned arguments
-                        execvp(cleanedArguments[0], cleanedArguments); 
-                        perror("execvp");
-                        exit(1);
-                } else if (pid > 0) {
-                        // parent
-                        waitpid(pid, &status, 0);
-                        //return to STDO
-                        // dup2(savedSTDO, toFileFD);
-                        // close(savedSTDO);
-                        // toFileBool = 0;
-                }else {
-                        perror("fork");
-                        exit(1);
-                }
+        /* Get command line */
+        fgets(cmd, CMDLINE_MAX, stdin);
+        //printf("cmd raw: %s\n", cmd);
 
-                     fprintf(stderr, "+ completed '%s' [%d]\n",
-                        cleanedArguments[0], WEXITSTATUS(status)); //change to full command string later
+        /* Print command line if stdin is not provided by terminal */
+        if (!isatty(STDIN_FILENO)) {
+            printf("%s", cmd);
+            fflush(stdout);
+        }
+        /* Remove trailing newline from command line */
+        nl = strchr(cmd, '\n');
+        if (nl) {
+            *nl = '\0';
+        }
+        // Check if user entered any arguments, if not then ask again
+        if(cmd[0] == '\0') {
+            fprintf(stderr, "Error: no arguments entered\n");
+            continue;
+        } else {
+            // Parse arguments into array
+            //add initial raw token
+            char *token = strtok(cmd, " ");
+            arguments[0] = token;
+
+            while (token != NULL) { // while we still have tokens left in cmd, cont
+                //printf("token1: %s\t%d\n",token, inc);
+                token = strtok(NULL, " ");
+                arguments[inc] = token;// add token to arguments
+                inc++;
+                // printf("token2: %s\t%d\n",token, inc)
+            }
+
+            // Check if valid process arguments
+            if (inc == 18) {
+                fprintf(stderr, "Error: too many process arguments\n");
+            } else {
+                // if valid arguments, then handle the proccesses
+                //printf("cmd raw: %s\n", cmd);
+                argHandler(arguments, workdir);
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
 }
-void createProcessWithOutputRedirection(char *cleanedArguments[], char* outputFile){
-                pid_t pid;
-                pid = fork();
-                int status, toFileFD;
-
-
-                if (pid == 0) {
-                        // child
-                          //printf("args: %s\n",arguments[(inc - 2)]);
-                   
-                        toFileFD = open(outputFile, O_WRONLY | O_CREAT, 0644);
-                        dup2(toFileFD, STDOUT_FILENO);
-                        close(toFileFD);
-                        execvp(cleanedArguments[0], cleanedArguments); 
-                        perror("execvp");
-                        exit(1);
-                } else if (pid > 0) {
-                        // parent
-                        waitpid(pid, &status, 0);
-                        //return to STDO
-                        // dup2(savedSTDO, toFileFD);
-                        // close(savedSTDO);
-                        // toFileBool = 0;
-                }else {
-                        perror("fork");
-                        exit(1);
-                }
-
-                     fprintf(stderr, "+ completed '%s' [%d]\n",
-                        cleanedArguments[0], WEXITSTATUS(status)); //change to full command string later
-}
-
 
 int argHandler(char* arguments[], char workdir[]) {
     int currPos = 0;
-    //char workdir[512];
     char *cleanedArguments[16];
     char *outRedirect, *pipe, *inRedirect;
     bool hasChar = false;
-
-    //n2 = strchr(cmd, '\n');
-    //n3 = strchr(cmd, '\n');
-    // >
-    // <
-    // |
-
-    //echo hello world > test | cat test
-    // echo echo test | 11
 
     while(arguments[currPos] != NULL){
         // initialize special characters
@@ -111,40 +95,36 @@ int argHandler(char* arguments[], char workdir[]) {
         inRedirect = strchr(arguments[currPos], '<');
         //if not < > >&  | add to cleanargs
         // If not a > < or | then go in if statement
-        if(outRedirect == 0 && pipe == 0 && inRedirect == 0){
+        if(outRedirect == 0 && pipe == 0 && inRedirect == 0){ //parse args into cleaned args if not <>|
             cleanedArguments[currPos] = arguments[currPos];
-            printf("args: %s\t%d\n", cleanedArguments[currPos], currPos);
+            //printf("args: %s\t%d\n", cleanedArguments[currPos], currPos);
             currPos++;
-        }
-        else{
-            if(outRedirect != 0) {
-                // this will handle the > output redirection
-                printf("In carrot statement\n");
-                hasChar = true;
-                cleanedArguments[currPos] = NULL;
-                createProcessWithOutputRedirection(cleanedArguments, arguments[currPos+1]);
-                currPos += 2;
-                break; // this will then break out of the else and continue going through argumetns
-
-            } else if(inRedirect != 0) {
-                printf("In < Statement\n");
-                //then handle input redirection <
-                break;
+        } else if(outRedirect != 0) {
+            if(arguments[currPos+1] == NULL){//catch no output file
+                fprintf(stderr, "Error: no output file\n");
+                return 0;
             }
-//            else{
-//                cleanedArguments[currPos] = NULL;
-//                createProcess(cleanedArguments);
-//            }
+            // this will handle the > output redirection
+            printf("In carrot statement\n");
+            hasChar = true;
+            cleanedArguments[currPos] = NULL;
+            createProcessWithOutputRedirection(cleanedArguments, arguments[currPos+1]);
+            currPos += 2;
+            break; // this will then break out of the else and continue going through argumetns
+        } else if(inRedirect != 0) {
+            printf("In < Statement\n");
+            hasChar = true;
+            //then handle input redirection <
+            break;
+        } else if (pipe != 0) {
+            // check for pipe
+            // can be up to 3 pipe signs on the same command line
+            // process 1 | process 2 | process 3
+            hasChar = true;
+            printf("In | Statement\n");
+            createPipes(cleanedArguments, arguments);
             break;
         }
-        // check for pipe
-        //checkpipe() which will be like below
-        // can be up to 3 pipe signs on the same command line
-         if  (pipe != 0) {
-                 // process 1 | process 2 | process 3
-                 // handle pipe after checking if no > or <
-                 printf("In | Statement\n");
-         }
     }
 
     // /* Builtin commands */
@@ -153,117 +133,175 @@ int argHandler(char* arguments[], char workdir[]) {
         fprintf(stderr, "Bye...\n");
         exit(0);
     }
-    // the is the command for pwd
+        // the is the command for pwd
     else if (!strcmp(cleanedArguments[0], "pwd")) {
         printf("CURRENT DIR: %s\n", getcwd(workdir, CMDLINE_MAX));
     }
-    // this is the command for cd
+        // this is the command for cd
     else if (!strcmp(cleanedArguments[0], "cd")) {
         chdir(cleanedArguments[1]);
     }
-    // this will create a process if string doesnt have a > < or |
+        // this will create a process if string doesnt have a > < or | remaining
     else if (!hasChar) {
         cleanedArguments[currPos] = NULL;
-        createProcess(cleanedArguments);
+        createProcess(arguments, cleanedArguments);
     }
     return 0;
 }
 
-
-int main(void)
-{
-        char cmd[CMDLINE_MAX];
-        char workdir[CMDLINE_MAX];
-        char *arguments[16];
-        int toFileBool = 0;
-
-        while (1) {
-                char *nl, *n2;
-                int inc = 1, toFileFD, savedSTDO;
-
-                /* Print prompt */
-                printf("sshell@ucd$ ");
-                fflush(stdout);
-
-                /* Get command line */
-                fgets(cmd, CMDLINE_MAX, stdin);
-                //printf("cmd raw: %s\n",cmd);
-
-                /* Print command line if stdin is not provided by terminal */
-                if (!isatty(STDIN_FILENO)) {
-                        printf("%s", cmd);
-                        fflush(stdout);
-                }
-
-                /* Remove trailing newline from command line */
-                nl = strchr(cmd, '\n');
-                if (nl) {
-                        *nl = '\0';
-                }
-               
-                /* find > characters */
-                // n2 = strchr(cmd, '>');
-                // if(n2){
-                //         *n2 = ' ';
-                //         toFileBool = 1;
-                // }
-                //raw tokens
-                //add initial token
-                char *token = strtok(cmd, " ");
-                arguments[0] = token;
-
-                while(token != NULL) {
-                        //make object 
-                        //printf("token1: %s\t%d\n",token, inc);
-                        token = strtok(NULL, " ");
-                        arguments[inc] = token;// add token to arguments
-                        inc++; 
-                       // printf("token2: %s\t%d\n",token, inc);
-                }
-
-                argHandler(arguments, workdir);
-
-                // pid_t pid;
-                // pid = fork();
-                // int status;
-
-
-                // if (pid == 0) {
-                //         // child
-                //           //printf("args: %s\n",arguments[(inc - 2)]);
-                //         if (toFileBool){
-                //               //  printf("args: %s\n",arguments[(inc - 2)]);
-                //                 toFileFD = open(arguments[(inc - 2)], O_WRONLY | O_CREAT, 0644);
-                //                 savedSTDO = dup(STDOUT_FILENO);
-                //                 dup2(toFileFD, STDOUT_FILENO);
-                //                 close(toFileFD);
-                //         }
-
-                //         // printf("cmd raw: %s\n",cmd);
-                //         char *args[] = { arguments[0], arguments[1], arguments[2], arguments[3], 
-                //                          arguments[4], arguments[5], arguments[6], arguments[7], 
-                //                          arguments[8], arguments[9], arguments[10], arguments[11], 
-                //                          arguments[12], arguments[13], arguments[14], arguments[15]}; //cleaned arguments
-                //         execvp(arguments[0], args); 
-                //         perror("execvp");
-                //         exit(1);
-                // } else if (pid > 0) {
-                //         // parent
-                //         waitpid(pid, &status, 0);
-                //         //return to STDO
-                //         dup2(savedSTDO, toFileFD);
-                //         close(savedSTDO);
-                //         toFileBool = 0;
-                // }else {
-                //         perror("fork");
-                //         exit(1);
-                // }
-
-
-                // show status 
-                // fprintf(stderr, "+ completed '%s' [%d]\n",
-                //         cmdcopy, WEXITSTATUS(status));
+void createProcess(char* arguments[], char *cleanedArguments[]){
+    pid_t pid;
+    pid = fork();
+    int status;
+    if (pid == 0) {
+        execvp(cleanedArguments[0], cleanedArguments);
+        perror("execvp");
+        exit(1);
+    } else if (pid > 0) {
+        // parent
+        waitpid(pid, &status, 0);
+    } else {
+        perror("fork");
+        exit(1);
+    }
+    // print full command string output
+    int j = 0;
+    fprintf(stderr, "+ completed '");
+    while (arguments[j] != NULL) {
+        fprintf(stderr, "%s", arguments[j]);
+        j++;
+        if(arguments[j] == NULL) {
+            break;
+        } else {
+            fprintf(stderr, " ");
         }
+    }
+    fprintf(stderr, "' [%d]\n", WEXITSTATUS(status));
+//    fprintf(stderr, "+ completed '%s' [%d]\n",
+//            cleanedArguments[0], WEXITSTATUS(status)); //change to full command string later
+}
 
-        return EXIT_SUCCESS;
+
+void createProcessWithOutputRedirection(char *cleanedArguments[], char* outputFile){
+    pid_t pid;
+    pid = fork();
+    int status, toFileFD, savedSTDO;
+
+    if (pid == 0) {
+        // child
+        toFileFD = open(outputFile, O_WRONLY | O_CREAT, 0644); //new fd
+        savedSTDO = dup(STDOUT_FILENO); // save stdout
+        dup2(toFileFD, STDOUT_FILENO); //replace stdout
+        close(toFileFD);
+        execvp(cleanedArguments[0], cleanedArguments);
+        perror("execvp");
+        exit(1);
+    } else if (pid > 0) {
+        // parent
+        waitpid(pid, &status, 0);
+        //return to STDO
+        dup2(savedSTDO, toFileFD);
+        close(savedSTDO);
+    } else {
+        perror("fork");
+        exit(1);
+    }
+
+    fprintf(stderr, "+ completed '%s' [%d]\n",
+            cleanedArguments[0], WEXITSTATUS(status)); //change to full command string later
+}
+
+void createPipes(char *cleanedArguments[], char *remainingArguments[]){
+    pid_t pid;
+    int status, currPos = 0, numArgs = 1, temp = 0 ;
+    int fdEdge[2], fdMiddle[2];
+    char *perpipe[16];
+
+    // echo hello World | Test | test > file
+    while(remainingArguments[currPos] != NULL){
+        //    printf("args in pipes cleaned : %s\t%d\n", cleanedArguments[currPos], currPos);
+        if(!strcmp(remainingArguments[currPos], "|")){
+            numArgs++;
+        }
+        currPos++;
+    }
+    printf("%d\n", numArgs);
+
+    for(int i = 0; i < numArgs; i++) {
+        currPos = 0;
+        while(remainingArguments[temp] != NULL && strcmp(remainingArguments[temp], "|")){
+            perpipe[currPos] = remainingArguments[temp];
+            printf("args in perpipe : %s\t%d\n", perpipe[currPos], currPos);
+            currPos++;
+            temp++;
+        }
+        perpipe[currPos] = NULL;
+        temp++;
+
+        pipe(fdEdge);
+        pid = fork();
+
+        if (pid == 0) { // child
+            //am i command 1 and 2
+            //if 1 pipe out to 2
+            //if 2 pine in from 1 and out to console.tm (unless i am a middle child and need to pipe to another process or am output redirecting to a file)
+            //code reviewers divert your eyes
+            if(i == 0){ // A
+                close(fdEdge[0]);
+                dup2(fdEdge[1], STDOUT_FILENO);
+                // need to do a STDIN_FILENO
+                close(fdEdge[1]);
+            }
+            else if(i == 1 && numArgs == 2){ //if is B command and the last command A - B
+                //fprintf()
+                close(fdEdge[1]);
+                dup2(fdEdge[0], STDIN_FILENO);
+                close(fdEdge[0]);
+            }
+            // else if(i == 1){ // if is B command and is not the last, am i 2nd to last A - B - C, or am i 3d to last A - B - C - D
+
+            // }
+            // else if(i == 2 && numArgs == 3){ //if is C command and the last command A - B - C or A - B - C - D
+
+            // }
+            execvp(perpipe[0], perpipe);
+            perror("execvp");
+            exit(1);
+        } else if (pid > 0) {
+            // parent
+            //waitpid(pid, &status, 0);
+//            if(i == 0){
+//                close(fdEdge[1]);
+//            }
+//            if(i == 1){
+//                close(fdEdge[0]);
+//            }
+        }else {
+            perror("fork");
+            exit(1);
+        }
+        fprintf(stderr, "+ completed '%s' [%d]\n",
+                perpipe[0], WEXITSTATUS(status)); //change to full command string later
+    }
+/*
+    pipe(fdEdge);
+    if (fork != 0) {
+        close(fdEdge[0]);
+        dup2(fdEdge[1], STDOUT_FILENO);
+        close(fdEdge[1]);
+        execvp(perpipe[0], perpipe);
+    } else {
+        close(fdEdge[1]);
+        dup(fdEdge[0], STDIN_FILENO);
+        close(fdEdge[0]);
+        execvp()
+    }
+*/
+    // currPos = 0;
+    // while(remainingArguments[currPos] != NULL){
+    //    printf("args in pipes remaining : %s\t%d\n", remainingArguments[currPos], currPos);
+    //    currPos++;
+    // }
+    // printf("args in pipes cleaned : %s\t%d\n", cleanedArguments[currPos], currPos);
+
 }
