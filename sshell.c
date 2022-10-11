@@ -9,8 +9,8 @@
 #define CMDLINE_MAX 512
 #define ARGS_MAX 16
 
-static inline void *xmalloc(size_t size) //professors provided project 0 implementation of linked list structs
-{
+static inline void *xmalloc(size_t size){ //professors provided project 0 implementation of linked list structs
+
     void *p = malloc(size);
     return p;
 };
@@ -18,8 +18,7 @@ struct commandList{
     struct commandListNode *p, *p_tail;
     int numOfCommands;
 };
-struct commandListNode
-{
+struct commandListNode{
     struct aCommand *command;
     struct commandListNode *next;
 };
@@ -28,6 +27,7 @@ struct aCommand{
     char *processName;
     char *outputRedirFile;
     char *arguments[ARGS_MAX];
+    char cmdSave[CMDLINE_MAX];
     int numOfArgs;
     int fd[2];
 };
@@ -58,109 +58,261 @@ void printArgs(struct aCommand *currCommand){
     }
     printf("\nNum args: %d\n", currCommand->numOfArgs);
 }
+void fprintCommand(char cmd[CMDLINE_MAX], int status){
+    fprintf(stderr, "+ completed '%s' [%d]\n",
+                cmd, WEXITSTATUS(status));
+}
 
-void createProcess(struct aCommand *currCommand, char cmd[ARGS_MAX]){
+void createProcess(struct aCommand *currCommand){
     pid_t pid;
     pid = fork();
-    int status;
+    int status = -1;
         if (pid == 0) {
             // child
             execvp(currCommand->processName, currCommand->arguments); 
             perror("execvp");
             exit(1);
-        } else if (pid > 0) {
+        } 
+        else if (pid > 0) {
             // parent
-            waitpid(pid, NULL, 0);
-        }else {
+            waitpid(pid, &status, 0);
+        }
+        else {
             perror("fork");
             exit(1);
         }
         // show status 
-        fprintf(stderr, "+ completed '%s' [%d]\n",
-                cmd, WEXITSTATUS(status));
+        // fprintf(stderr, "+ completed '%s' [%d]\n",
+        //         currCommand->cmdSave, WEXITSTATUS(status));
+        fprintCommand(currCommand->cmdSave, status);
 }
-void createProcessWithOutputRedirection(struct aCommand *currCommand, char cmd[ARGS_MAX]){
+void createProcessWithOutputRedirection(struct aCommand *currCommand){
     pid_t pid;
-    int status, toFileFD, savedSTDO;
     pid = fork();
-
+    int status = -1, toFileFD = 0, savedSTDO = 0;
     if (pid == 0) {
         // child
+        // check if the output file is NULL 
+        if(currCommand->outputRedirFile == NULL){//catch no output file
+            fprintf(stderr, "Error: no output file\n");
+            return;
+        }
         toFileFD = open(currCommand->outputRedirFile, O_WRONLY | O_CREAT, 0644); //new fd
         savedSTDO = dup(STDOUT_FILENO); // save stdout
         dup2(toFileFD, STDOUT_FILENO); //replace stdout
         close(toFileFD);
-        status = execvp(currCommand->processName, currCommand->arguments);
+        execvp(currCommand->processName, currCommand->arguments);
         perror("execvp");
         exit(1);
-    } else if (pid > 0) {
+    } 
+    else if (pid > 0) {
         // parent
         //return to STDO
-        waitpid(pid, NULL, 0);
+        waitpid(pid, &status, 0);
+        fflush(stdout);
         dup2(savedSTDO, toFileFD);
         close(savedSTDO);
-    } else {
+    } 
+    else {
         perror("fork");
         exit(1);
     }
-    fprintf(stderr, "+ completed '%s' [%d]\n",
-            cmd, WEXITSTATUS(status)); //change to full command string later
+    fprintCommand(currCommand->cmdSave, status);
 }
 
-void createPipes(struct commandList *cmdList, char cmd[ARGS_MAX]){
-
+void createPipes(struct commandList *cmdList){
     struct commandListNode *access = xmalloc(sizeof(struct commandListNode));
+    struct commandListNode *print = xmalloc(sizeof(struct commandListNode));
     access = cmdList->p;
-    // while (access != NULL){
-    //     printArgs(access->command);
-    //     access = access->next;
+    // print = cmdList->p;
+    // while (print != NULL){
+    //     printArgs(print->command);
+    //     print = print->next;
     // }  
-    //  access = cmdList->p;
 
-    pipe(access->command->fd); //pipe 1 A-B
-    pipe(access->next->command->fd); //pipe 2 B-C
-
-    pid_t pid;
-    pid = fork();
-    int status;
-
-    if (pid !=  0) {
-        // parent
-        //fd of command 1
-        //fd[1] is stout of command 1
-        close(access->command->fd[0]);
-        dup2(access->command->fd[1], STDOUT_FILENO);
-        close(access->command->fd[1]);
-        //printArgs(access->command);
-        execvp(access->command->processName, access->command->arguments); 
-        perror("execvp");
-        exit(1);
-    } else {
-        // child
-        //fd of command 2?
-        //fd[0] is stdin of command2
-        waitpid(pid, NULL, 0);
-        close(access->command->fd[1]);
-        dup2(access->command->fd[0], STDIN_FILENO);
-        close(access->command->fd[0]);
-        access = access->next;
-        // printArgs(access->next->command);
-        //execvp(access->next->command->processName, access->next->command->arguments); 
-        execvp(access->command->processName, access->command->arguments); 
-        perror("execvp");
-        exit(1);
+    if (cmdList->numOfCommands == 2){
+        pipe(access->command->fd); //pipe 1 A-B
+        pid_t pid1, pid2;
+        int pid1Status, pid2Status;
+        switch (pid1 = fork()){
+            case -1:
+                /* code */
+                break;
+            case 0: //child
+                //change stdout fd[1]
+                close(access->command->fd[0]);
+                dup2(access->command->fd[1], STDOUT_FILENO);
+                close(access->command->fd[1]);
+                execvp(access->command->processName, access->command->arguments); 
+            default:
+                break;
+        }
+        switch (pid2 = fork()){
+            case -1:
+                /* code */
+                break;
+            case 0: //child
+            
+                //change stdout fd[0]
+                close(access->command->fd[1]);
+                dup2(access->command->fd[0], STDIN_FILENO);
+                close(access->command->fd[0]);
+                execvp(access->next->command->processName, access->next->command->arguments); 
+            default:
+                break;
+        }
+            fflush(stdout);
+            close(access->command->fd[0]);
+            close(access->command->fd[1]);
+            waitpid(pid1, &pid1Status,  0);
+            waitpid(pid2, &pid2Status,  0);
+            fprintf(stderr, "+ completed '%s' [%d][%d]\n",
+                    access->command->cmdSave, WEXITSTATUS(pid1Status), WEXITSTATUS(pid2Status));
     }
-    access = cmdList->p;
-    close(access->command->fd[0]);
-    close(access->command->fd[1]);
-    access = access->next;
-    close(access->command->fd[0]);
-    close(access->command->fd[1]);
-    // show status 
-    fprintf(stderr, "+ completed '%s' [%d]\n",
-            cmd, WEXITSTATUS(status));
+    else if (cmdList->numOfCommands == 3){
+        pipe(access->command->fd); //pipe 1 A-B
+        pipe(access->next->command->fd); //pipe 2 B-C
+        pid_t pid1, pid2, pid3;
+        int pid1Status, pid2Status, pid3Status;
+        switch (pid1 = fork()){
+            case -1:
+                /* code */
+                break;
+            case 0: //child
+                close(access->command->fd[0]);
+                dup2(access->command->fd[1], STDOUT_FILENO);
+                close(access->command->fd[1]);
+                execvp(access->command->processName, access->command->arguments); 
+            default:
+                break;
+        }
+        switch (pid2 = fork()){
+            case -1:
+                /* code */
+                break;
+            case 0: //child
+                close(access->command->fd[1]);
+                dup2(access->command->fd[0], STDIN_FILENO);
+                close(access->command->fd[0]);
+
+                close(access->next->command->fd[0]);
+                dup2(access->next->command->fd[1], STDOUT_FILENO);
+                close(access->next->command->fd[1]);
+                execvp(access->next->command->processName, access->next->command->arguments); 
+            default:
+                break;
+        }
+        switch (pid3 = fork()){
+            case -1:
+                /* code */
+                break;
+            case 0: //child
+                close(access->next->command->fd[1]);
+                dup2(access->next->command->fd[0], STDIN_FILENO);
+                close(access->next->command->fd[0]);
+                execvp(access->next->next->command->processName, access->next->next->command->arguments); 
+            default:
+                break;
+        }
+
+            fflush(stdout);
+            close(access->command->fd[0]);
+            close(access->command->fd[1]);
+
+            close(access->next->command->fd[0]);
+            close(access->next->command->fd[1]);
+
+            waitpid(pid1, &pid1Status,  0);
+            waitpid(pid2, &pid2Status,  0);
+            waitpid(pid3, &pid3Status,  0);
+
+            fprintf(stderr, "+ completed '%s' [%d][%d][%d]\n",
+                    "testpipe", WEXITSTATUS(pid1Status), WEXITSTATUS(pid2Status), WEXITSTATUS(pid3Status));
+    }
+    else if (cmdList->numOfCommands == 4){
+        pipe(access->command->fd); //pipe 1 A-B
+        pipe(access->next->command->fd); //pipe 2 B-C
+        pipe(access->next->next->command->fd); // pipe 3 C-D
+        pid_t pid1, pid2, pid3, pid4;
+        int pid1Status, pid2Status, pid3Status, pid4Status;
+        switch (pid1 = fork()){
+            case -1:
+                /* code */
+                break;
+            case 0: //child
+                close(access->command->fd[0]);
+                dup2(access->command->fd[1], STDOUT_FILENO);
+                close(access->command->fd[1]);
+                execvp(access->command->processName, access->command->arguments); 
+            default:
+                break;
+        }
+        switch (pid2 = fork()){
+            case -1:
+                /* code */
+                break;
+            case 0: //child
+                close(access->command->fd[1]);
+                dup2(access->command->fd[0], STDIN_FILENO);
+                close(access->command->fd[0]);
+
+                close(access->next->command->fd[0]);
+                dup2(access->next->command->fd[1], STDOUT_FILENO);
+                close(access->next->command->fd[1]);
+                execvp(access->next->command->processName, access->next->command->arguments); 
+            default:
+                break;
+        }
+    
+        switch (pid3 = fork()){
+            case -1:
+                /* code */
+                break;
+            case 0: //child
+                close(access->next->command->fd[1]);
+                dup2(access->next->command->fd[0], STDIN_FILENO);
+                close(access->next->command->fd[0]);
+
+                close(access->next->next->command->fd[0]);
+                dup2(access->next->next->command->fd[1], STDOUT_FILENO);
+                close(access->next->next->command->fd[1]);
+                execvp(access->next->next->next->command->processName, access->next->next->next->command->arguments); 
+            default:
+                break;
+        }
+          switch (pid4 = fork()){
+            case -1:
+                /* code */
+                break;
+            case 0: //child
+                close(access->next->command->fd[1]);
+                dup2(access->next->command->fd[0], STDIN_FILENO);
+                close(access->next->command->fd[0]);
+                execvp(access->next->next->command->processName, access->next->next->command->arguments); 
+            default:
+                break;
+        }
+
+            close(access->command->fd[0]);
+            close(access->command->fd[1]);
+
+            close(access->next->command->fd[0]);
+            close(access->next->command->fd[1]);
+
+            close(access->next->next->command->fd[0]);
+            close(access->next->next->command->fd[1]);
+    
+                  
+            waitpid(pid1, &pid1Status,  0);
+            waitpid(pid2, &pid2Status,  0);
+            waitpid(pid3, &pid3Status,  0);
+            waitpid(pid4, &pid4Status,  0);
+            fprintf(stderr, "+ completed '%s' [%d][%d][%d][%d]\n",
+                    access->next->next->next->command->processName, WEXITSTATUS(pid1Status), WEXITSTATUS(pid2Status), WEXITSTATUS(pid3Status), WEXITSTATUS(pid4Status));
+    }
 }
-void parseInPipes(struct commandList cmdList, char in[ARGS_MAX]){
+    
+void parseInPipes(struct commandList cmdList, char cmd[CMDLINE_MAX]){
         // parse in pipes
         // while != NULL 
                 // while loop through num commands, 
@@ -175,50 +327,49 @@ void parseInPipes(struct commandList cmdList, char in[ARGS_MAX]){
     struct aCommand currCommandFour;
     memset(&currCommandFour, 0, sizeof(struct aCommand));
 
-    char * token = strtok(in, " ");
-    currCommandOne.arguments[0] = token;
+
     int argumentPos = 1, cmdItr = 1;
+    strncpy(currCommandOne.cmdSave, cmd, CMDLINE_MAX); //saves initial untokenized cmdIn
+    char * token = strtok(cmd, " "); // take initial token
+    currCommandOne.arguments[0] = token; //set initial arg0
+    currCommandOne.processName = currCommandOne.arguments[0]; // set process name for command 1
     while (token != NULL){
-       // printf("tokens: %s\t%d\n",token, argumentPos);
+    //    printf("\ttokens: %s\t%d\n",token, argumentPos);
         token = strtok(NULL, " ");
-        if (token != NULL && (!strchr(token, '|'))){
+        if (token != NULL && (!strchr(token, '|'))){ //token is confirmed not null and is not the pipe character signifying a new command will follow
             if (cmdItr == 1){
-               //printf("in cmditr 1 statement\n");
                 currCommandOne.arguments[argumentPos] = token;
-                currCommandOne.processName = currCommandOne.arguments[0];
+                //printf("after add: %s\t%d",currCommandOne.arguments[argumentPos], argumentPos);
                 argumentPos++;
-                currCommandOne.arguments[argumentPos] = NULL;
                 currCommandOne.numOfArgs = argumentPos;
-              // printf("after add: %s\t%d\n",currCommandOne.arguments[argumentPos], argumentPos);
+            //   printf("b4 add: %s\t%d\n",currCommandOne.arguments[argumentPos], argumentPos);
             }
             else if (cmdItr == 2){
                 currCommandTwo.arguments[argumentPos] = token;
                 currCommandTwo.processName = currCommandTwo.arguments[0];
                 argumentPos++;
-                currCommandTwo.arguments[argumentPos] = NULL;
                 currCommandTwo.numOfArgs = argumentPos;
             }
             else if (cmdItr == 3){
                 currCommandThree.arguments[argumentPos] = token;
                 currCommandThree.processName = currCommandThree.arguments[0];
                 argumentPos++;
-                currCommandThree.arguments[argumentPos] = NULL;
                 currCommandThree.numOfArgs = argumentPos;
             }
-             else if (cmdItr == 4) {
+            else if (cmdItr == 4){
                 currCommandFour.arguments[argumentPos] = token;
                 currCommandFour.processName = currCommandFour.arguments[0];
                 argumentPos++;
-                currCommandFour.arguments[argumentPos] = NULL;
                 currCommandFour.numOfArgs = argumentPos;
             }
         }
-        else{//housekeeping
-            argumentPos = 0;
-            cmdItr++;
+        else{//move and prep for next command
+            currCommandOne.arguments[argumentPos+2] = NULL;//set last arg as null for execvp requirments
+            argumentPos = 0;//reset argpost for next command
+            cmdItr++;//move to next command
         }
     }
-    
+
     for (int i = 0; i < cmdList.numOfCommands; i++){
         struct commandListNode *p = xmalloc(sizeof(struct commandListNode));
         if (i == 0){
@@ -246,50 +397,42 @@ void parseInPipes(struct commandList cmdList, char in[ARGS_MAX]){
                // printArgs(cmdList.p->next->command);
         }
     }
-    //  struct commandListNode *print = xmalloc(sizeof(struct commandListNode));
+    //struct commandListNode *print = xmalloc(sizeof(struct commandListNode));
     //  print = cmdList.p;
     // while (print != NULL){
     //     printArgs(print->command);
     //     print = print->next;
     // }  
     
-    createPipes(&cmdList, in);
+    createPipes(&cmdList);
 }
-void parseIn(struct aCommand *currCommand, char in[ARGS_MAX]){
-    char * token = strtok(in, " ");
-    currCommand->arguments[0] = token;
-    currCommand->processName = token;
+void parseIn(struct aCommand *currCommand, char cmd[CMDLINE_MAX]){
+    strncpy(currCommand->cmdSave, cmd, CMDLINE_MAX); //saves initial untokenized cmdIn
+    char * token = strtok(cmd, " "); //parse initial token
+    currCommand->arguments[0] = token; //set up initial arg0
+    currCommand->processName = token; //processName = arg0
+    //currCommand->outputRedirFile = NULL;
     int argumentPos = 1;
-    while (token != NULL) { // while we still have tokens left in cmd, cont
-        //printf("token1: %s\t\n",token);
+    char *replace;
+    while (token != NULL){ // while we still have tokens left in cmd, cont
         token = strtok(NULL, " ");
-        if (token != NULL)
-        {
-            //printf("\ninside else if \n");
+        if (token != NULL){
             // add token to currCommand arguments @mu
             currCommand->arguments[argumentPos] = token;
-            // printf("token2: %s\t%d\n",currCommand->arguments[argumentPos], argumentPos);
-            if(strchr(token, '>')){
-               // printf("\ninside if > \n");
-                currCommand->arguments[argumentPos] = NULL;
-                token = strtok(NULL, " ");
+            if(replace = strchr(token, '>')){
+                currCommand->arguments[argumentPos] = NULL; //erase > char in args
+                token = strtok(NULL, " "); // take new token which will have fileout
                 currCommand->outputRedirFile = token;
                 break;
             }
-
-         argumentPos++;
-
-        }
-        //printf("token2: %s\t%d\n",token, argumentPos);
-            
+            argumentPos++;
+        }   
     }
-
     currCommand->arguments[argumentPos++] = NULL;
     currCommand->numOfArgs = argumentPos; //final number of args
 }
+
 int createCommand(char cmd[]){
-    char cmdCopy[CMDLINE_MAX];
-    strncpy(cmdCopy, cmd, CMDLINE_MAX);
 
     struct commandList cmdList; //command 1
     memset(&cmdList, 0, sizeof(struct commandList));
@@ -302,85 +445,97 @@ int createCommand(char cmd[]){
     //if(strchr(cmd, '|') || strchr(cmd, '<') || strchr(cmd, '>')){
     if(strchr(cmd, '|')){
         // Method here to check number of commands
-        cmdList.numOfCommands = getNumPipeCommands(cmdCopy);
+        cmdList.numOfCommands = getNumPipeCommands(cmd);
        // printf("\t%d\n",cmdList.numOfCommands);
         parseInPipes(cmdList, cmd);
-        
-        // parse in pipes
-        // while != NULL 
-                // while loop through num commands, 
-                //      struct make curr command A B C D
-                // while loop through cmd remaining, break out 
-        
-        // printf("%s\t\n",cmd);
-        // struct commandListNode *print = xmalloc(sizeof(struct commandListNode));
-        // print = cmdList.p;
-        // while (print != NULL)
-        // {
-        //     // printf("arg0: %s\n",print->command->processName);
-        //     printArgs(print->command);
-        //     print = print->next;
-        // }  
-       // printf("inside pipe create command\n");
     }
-    else if(strchr(cmd, '>'))
-    {
+    else if(strchr(cmd, '>')){  
         parseIn(&currCommand, cmd);
-        printArgs(&currCommand);
-        printf("output file: %s\n",currCommand.outputRedirFile);
-        createProcessWithOutputRedirection(&currCommand, cmdCopy);
-        
-        // printf("outside output");
-        /* code */
+            if (strchr(currCommand.arguments[0], '>')){
+                fprintf(stderr,"Error: Missing command\n");
+                return 0;
+            }
+ 
+            
+        //printArgs(&currCommand);
+        //printf("output file: %s\n",currCommand.outputRedirFile);
+        createProcessWithOutputRedirection(&currCommand);
+        return 0;
     }
+    //built in cmds
+    // else if (!strcmp(cleanedArguments[0], "cd")) { 
+    //             chdir(cleanedArguments[1]);
+    // }
     else{
         parseIn(&currCommand, cmd);
-        printArgs(&currCommand);
-        createProcess(&currCommand, cmdCopy);
-    }
-}
-int main(void)
-{
-        char cmd[CMDLINE_MAX];
-        while (1) {
-                char *nl;
-                char *arguments[16];
-                int inc = 1;
-
-                /* Print prompt */
-                printf("sshell@ucd$ ");
-                fflush(stdout);
-
-                /* Get command line */
-                fgets(cmd, CMDLINE_MAX, stdin);
-                
-                /* Print command line if stdin is not provided by terminal */
-                if (!isatty(STDIN_FILENO)) {
-                        printf("%s\n", cmd);
-                        fflush(stdout);
-                }
-
-                /* Remove trailing newline from command line */
-                nl = strchr(cmd, '\n');
-                if (nl) {
-                        *nl = '\0';
-                }
-                /* Builtin command */
-                // this is the command for exit
-                if (!strcmp(cmd, "exit")) {
-                        fprintf(stderr, "Bye...\n");
-                        break;
-                } 
-                // the is the command for pwd 
-                if (!strcmp(cmd, "pwd")) {
-                        char workdir[CMDLINE_MAX];
-                        printf("CURRENT DIR: %s\n", getcwd(workdir, CMDLINE_MAX));
-                        continue;
-                } 
-                //printArgs(&currCommand);
-                //createProcess(&currCommand, cmdCopy);
-                createCommand(cmd);  
+       // printArgs(&currCommand);
+          if (currCommand.numOfArgs > 15){
+            fprintf(stderr,"Error: too many process arguments\n");
+            return 0;
         }
+
+
+        //built in cmds
+        if (!strcmp(currCommand.arguments[0], "exit")){
+            fprintf(stderr, "Bye...\n");
+            fprintCommand(currCommand.arguments[0], 0);
+            exit(0);
+        } 
+        else if (!strcmp(currCommand.arguments[0], "cd")) { 
+            chdir(currCommand.arguments[1]);
+            fprintCommand(currCommand.cmdSave, 0);
+        }
+        else if (!strcmp(currCommand.arguments[0], "pwd")){
+            char workdir[CMDLINE_MAX];
+            printf("%s\n", getcwd(workdir, CMDLINE_MAX));
+        } 
+        else{
+            createProcess(&currCommand);
+        }
+    }
+
+    return 0;
+}
+int main(void){
+    char cmd[CMDLINE_MAX];
+    int savedOut = dup(1), savedIn = dup(0);
+    while (1) {
+        dup2(savedOut, 1);
+        dup2(savedIn, 0);
+        /* Print prompt */
+        printf("sshell@ucd$ ");
+        fflush(stdout);
+
+        /* Get command line */
+        fgets(cmd, CMDLINE_MAX, stdin);
+        
+        /* Print command line if stdin is not provided by terminal */
+        if (!isatty(STDIN_FILENO)){
+                printf("%s", cmd);
+                fflush(stdout);
+        }
+
+        /* Remove trailing newline from command line */
+        char * nl = strchr(cmd, '\n');
+        if (nl){
+                *nl = '\0';
+        }
+        /* Builtin command */
+        // this is the command for exit
+        // the is the command for pwd 
+        //printArgs(&currCommand);
+        //createProcess(&currCommand, cmdCopy);
+        // Check if user entered any arguments, if not then ask again
+        if(cmd[0] == '\0'){
+            fprintf(stderr, "Error: no arguments entered\n");
+            continue;
+        } 
+        else {
+            createCommand(cmd);  
+        }
+            
+    }
 
         return EXIT_SUCCESS;
 }
+
