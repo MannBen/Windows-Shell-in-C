@@ -326,7 +326,7 @@ void createPipes(struct commandList *cmdList){
         // close(access->next->command->fd[1]);
 
         fprintf(stderr, "before wait2\n");
-        waitpid(pid1, &pid1Status, 0);
+        waitpid(pid2, &pid2Status, 0);
         fprintf(stderr, "after wait2\n");
         switch (pid3 = fork()){
             case -1:
@@ -355,83 +355,94 @@ void createPipes(struct commandList *cmdList){
         fprintf(stderr, "+ completed '%s' [%d][%d][%d]\n",
                     access->command->cmdSave, WEXITSTATUS(pid1Status), WEXITSTATUS(pid2Status), WEXITSTATUS(pid3Status));
     }
-    // if (cmdList->numOfCommands == 4){
-    //     pipe(access->command->fd); //pipe 1 A-B
-    //     pipe(access->next->command->fd); //pipe 2 B-C
-    //     pipe(access->next->next->command->fd); // pipe 3 C-D
-    //     pid_t pid1, pid2, pid3, pid4;
-    //     int pid1Status, pid2Status, pid3Status, pid4Status;
-    //     switch (pid1 = fork()){
-    //         case -1:
-    //             /* code */
-    //             break;
-    //         case 0: //child
-    //             close(access->command->fd[0]);
-    //             dup2(access->command->fd[1], STDOUT_FILENO);
-    //             close(access->command->fd[1]);
-    //             execvp(access->command->processName, access->command->arguments);
-    //         default:
-    //             break;
-    //     }
-    //     switch (pid2 = fork()){
-    //         case -1:
-    //             /* code */
-    //             break;
-    //         case 0: //child
-    //             close(access->command->fd[1]);
-    //             dup2(access->command->fd[0], STDIN_FILENO);
-    //             close(access->command->fd[0]);
+    if (cmdList->numOfCommands == 4){
+        pipe(access->command->fd); //pipe 1 A-B
+        pipe(access->next->command->fd); //pipe 2 B-C
+        pipe(access->next->next->command->fd); // pipe 3 C-D
+        pid_t pid1, pid2, pid3, pid4;
+        int pid1Status, pid2Status, pid3Status, pid4Status;
+        switch (pid1 = fork()){
+            case -1:
+                /* code */
+                break;
+            case 0: //child
+                close(access->command->fd[0]);
+                dup2(access->command->fd[1], STDOUT_FILENO);
+                close(access->command->fd[1]);
+                execvp(access->command->processName, access->command->arguments);
+            default:
+                break;
+        }
+            close(access->command->fd[1]);
+            fprintf(stderr, "before wait1\n");
+            waitpid(pid1, &pid1Status, 0);
+            fprintf(stderr, "after wait1\n");
+        switch (pid2 = fork()){
+            case -1:
+                /* code */
+                break;
+            case 0: //child
+                close(access->command->fd[1]);
+                dup2(access->command->fd[0], STDIN_FILENO);
+                close(access->command->fd[0]);
 
-    //             close(access->next->command->fd[0]);
-    //             dup2(access->next->command->fd[1], STDOUT_FILENO);
-    //             close(access->next->command->fd[1]);
-    //             execvp(access->next->command->processName, access->next->command->arguments);
-    //         default:
-    //             break;
-    //     }
+                close(access->next->command->fd[0]);
+                dup2(access->next->command->fd[1], STDOUT_FILENO);
+                close(access->next->command->fd[1]);
+                execvp(access->next->command->processName, access->next->command->arguments);
+            default:
+                break;
+        }
+            close(access->command->fd[0]);
+            close(access->next->command->fd[1]);
+            // close(access->next->command->fd[0]);
+            // close(access->next->command->fd[1]);
 
-    //     switch (pid3 = fork()){
-    //         case -1:
-    //             /* code */
-    //             break;
-    //         case 0: //child
-    //             close(access->next->command->fd[1]);
-    //             dup2(access->next->command->fd[0], STDIN_FILENO);
-    //             close(access->next->command->fd[0]);
+            fprintf(stderr, "before wait2\n");
+            waitpid(pid2, &pid2Status, 0);
+            fprintf(stderr, "after wait2\n");
+        switch (pid3 = fork()){
+            case -1:
+                /* code */
+                break;
+            case 0: //child
+                close(access->next->command->fd[1]);
+                dup2(access->next->command->fd[0], STDIN_FILENO);
+                close(access->next->command->fd[0]);
 
-    //             close(access->next->next->command->fd[0]);
-    //             dup2(access->next->next->command->fd[1], STDOUT_FILENO);
-    //             close(access->next->next->command->fd[1]);
-    //             execvp(access->next->next->next->command->processName, access->next->next->next->command->arguments);
-    //         default:
-    //             break;
-    //     }
-    //     switch (pid4 = fork()){
-    //         case -1:
-    //             /* code */
-    //             break;
-    //         case 0: //child
-    //             close(access->next->command->fd[1]);
-    //             dup2(access->next->command->fd[0], STDIN_FILENO);
-    //             close(access->next->command->fd[0]);
-    //             execvp(access->next->next->command->processName, access->next->next->command->arguments);
-    //         default:
-    //             break;
-    //     }
+                close(access->next->next->command->fd[0]);
+                dup2(access->next->next->command->fd[1], STDOUT_FILENO);
+                close(access->next->next->command->fd[1]);
+                execvp(access->next->next->next->command->processName, access->next->next->next->command->arguments);
+            default:
+                break;
+        }
+        switch (pid4 = fork()){
+            case -1:
+                /* code */
+                break;
+            case 0: //child
+                close(access->next->command->fd[1]);
+                dup2(access->next->command->fd[0], STDIN_FILENO);
+                close(access->next->command->fd[0]);
+                execvp(access->next->next->command->processName, access->next->next->command->arguments);
+            default:
+                break;
+        }
 
-    //     close(access->command->fd[0]);
-    //     close(access->command->fd[1]);
+        close(access->command->fd[0]);
+        close(access->command->fd[1]);
 
-    //     close(access->next->command->fd[0]);
-    //     close(access->next->command->fd[1]);
+        close(access->next->command->fd[0]);
+        close(access->next->command->fd[1]);
 
-    //     close(access->next->next->command->fd[0]);
-    //     close(access->next->next->command->fd[1]);
+        close(access->next->next->command->fd[0]);
+        close(access->next->next->command->fd[1]);
 
-    //     waitpid(pid4, &pid4Status,  0);
-                //fprintf(stderr, "+ completed '%s' [%d][%d][%d][%d]\n",
-                     //         access->command->cmdSave, WEXITSTATUS(pid1Status), WEXITSTATUS(pid2Status), WEXITSTATUS(pid3Status), WEXITSTATUS(pid4Status));
-    // }
+        waitpid(pid4, &pid4Status,  0);
+                fprintf(stderr, "+ completed '%s' [%d][%d][%d][%d]\n",
+                             access->command->cmdSave, WEXITSTATUS(pid1Status), WEXITSTATUS(pid2Status), WEXITSTATUS(pid3Status), WEXITSTATUS(pid4Status));
+    }
 }
     
 void parseInPipes(struct commandList cmdList, char cmd[CMDLINE_MAX]){
