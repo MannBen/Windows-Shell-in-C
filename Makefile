@@ -1,8 +1,8 @@
 sshell: sshell.o
-	gcc sshell.o -o sshell
+	gcc -Wall -Wextra -Werror sshell.o -o sshell
 
 sshell.o: sshell.c
-	gcc -Wall -Wextra -Werror -c sshell.c
+	gcc -Wall -Wextra -Werror -c -o sshell.o sshell.c
 
 clean:
-	rm -rf sshell.o sshell
+	rm -rf sshell.o sshell	

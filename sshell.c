@@ -63,7 +63,7 @@ struct stackNode{ //stack entyr
   struct stackNode *next;
 };
 struct stack *createNew(void){
-  struct stack *stackRet = (stack*)xmalloc(sizeof(*stackRet));
+  struct stack *stackRet = xmalloc(sizeof(*stackRet));
   if (stackRet){ //if successful malloc initialize stack vars
     stackRet->headOfStack = NULL;
     stackRet->stackSize = 0;
@@ -72,8 +72,8 @@ struct stack *createNew(void){
 };
 //helper stack funcs
 void push(struct stack *currStack, char* dirToPush){
-    struct stackNode * stackToEnter = (stackNode*)xmalloc(sizeof *stackToEnter);
-    char * copy = (char *)malloc(strlen(dirToPush) + 1); 
+    struct stackNode * stackToEnter = xmalloc(sizeof *stackToEnter);
+    char * copy = malloc(strlen(dirToPush) + 1); 
     if (stackToEnter){ //if it exists
         strcpy(copy, dirToPush); //mem leak fix how?
         stackToEnter->dir = copy;
@@ -175,7 +175,7 @@ void createProcessWithOutputRedirection(struct aCommand *currCommand){
 }
 
 void createPipes(struct commandList *cmdList){
-    struct commandListNode *access = (commandListNode*)xmalloc(sizeof(struct commandListNode));
+    struct commandListNode *access = xmalloc(sizeof(struct commandListNode));
     access = cmdList->p;
 
   int savedOut = dup(1);
@@ -423,7 +423,7 @@ void parseInPipes(struct commandList cmdList, char cmd[CMDLINE_MAX]){
     }
 
     for (int i = 0; i < cmdList.numOfCommands; i++){
-        struct commandListNode *p = (commandListNode*)xmalloc(sizeof(struct commandListNode));
+        struct commandListNode *p = xmalloc(sizeof(struct commandListNode));
         if (i == 0){
             p->command = &currCommandOne;
         }
