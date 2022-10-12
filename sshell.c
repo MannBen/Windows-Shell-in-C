@@ -373,10 +373,11 @@ void createPipes(struct commandList *cmdList){
             default:
                 break;
         }
-            close(access->command->fd[1]);
-            fprintf(stderr, "before wait1\n");
-            waitpid(pid1, &pid1Status, 0);
-            fprintf(stderr, "after wait1\n");
+        close(access->command->fd[1]);
+        fprintf(stderr, "before wait1\n");
+        waitpid(pid1, &pid1Status, 0);
+        fprintf(stderr, "after wait1\n");
+
         switch (pid2 = fork()){
             case -1:
                 /* code */
@@ -393,14 +394,15 @@ void createPipes(struct commandList *cmdList){
             default:
                 break;
         }
-            close(access->command->fd[0]);
-            close(access->next->command->fd[1]);
-            // close(access->next->command->fd[0]);
-            // close(access->next->command->fd[1]);
+        close(access->command->fd[0]);
+        close(access->next->command->fd[1]);
+        // close(access->next->command->fd[0]);
+        // close(access->next->command->fd[1]);
 
-            fprintf(stderr, "before wait2\n");
-            waitpid(pid2, &pid2Status, 0);
-            fprintf(stderr, "after wait2\n");
+        fprintf(stderr, "before wait2\n");
+        waitpid(pid2, &pid2Status, 0);
+        fprintf(stderr, "after wait2\n");
+
         switch (pid3 = fork()){
             case -1:
                 /* code */
@@ -413,35 +415,41 @@ void createPipes(struct commandList *cmdList){
                 close(access->next->next->command->fd[0]);
                 dup2(access->next->next->command->fd[1], STDOUT_FILENO);
                 close(access->next->next->command->fd[1]);
-                execvp(access->next->next->next->command->processName, access->next->next->next->command->arguments);
-            default:
-                break;
-        }
-        switch (pid4 = fork()){
-            case -1:
-                /* code */
-                break;
-            case 0: //child
-                close(access->next->command->fd[1]);
-                dup2(access->next->command->fd[0], STDIN_FILENO);
-                close(access->next->command->fd[0]);
                 execvp(access->next->next->command->processName, access->next->next->command->arguments);
             default:
                 break;
         }
-
-        close(access->command->fd[0]);
-        close(access->command->fd[1]);
-
+        fprintf(stderr, "closing fds fork 3\n");
         close(access->next->command->fd[0]);
-        close(access->next->command->fd[1]);
-
-        close(access->next->next->command->fd[0]);
         close(access->next->next->command->fd[1]);
 
+        // fprintf(stderr, "before wait1\n");
+        // waitpid(pid1, &pid1Status, 0);
+        // fprintf(stderr, "after wait1\n");
+        // waitpid(pid2, &pid2Status,  0);
+        // fprintf(stderr, "after wait2\n");
+        fprintf(stderr, "before wait3\n");
+        waitpid(pid3, &pid3Status,  0);
+        fprintf(stderr, "after wait3\n");
+
+            switch (pid4 = fork()){
+            case -1:
+                /* code */
+                break;
+            case 0: //child
+                close(access->next->next->command->fd[1]);
+                dup2(access->next->next->command->fd[0], STDIN_FILENO);
+                close(access->next->next->command->fd[0]);
+                execvp(access->next->next->next->command->processName, access->next->next->next->command->arguments);
+            default:
+                break;
+        }
+        close(access->next->next->command->fd[0]);
+        fprintf(stderr, "before wait4\n");
         waitpid(pid4, &pid4Status,  0);
-                fprintf(stderr, "+ completed '%s' [%d][%d][%d][%d]\n",
-                             access->command->cmdSave, WEXITSTATUS(pid1Status), WEXITSTATUS(pid2Status), WEXITSTATUS(pid3Status), WEXITSTATUS(pid4Status));
+         fprintf(stderr, "after wait4\n");
+        fprintf(stderr, "+ completed '%s' [%d][%d][%d][%d]\n",
+                        access->command->cmdSave, WEXITSTATUS(pid1Status), WEXITSTATUS(pid2Status), WEXITSTATUS(pid3Status), WEXITSTATUS(pid4Status));
     }
 }
     
