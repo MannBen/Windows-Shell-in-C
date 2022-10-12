@@ -84,17 +84,18 @@ void push(struct stack *currStack, char* dirToPush){
     }
 }
 void pop(struct stack *currStack){
-    char* theCommand[CMDLINE_MAX] = {"popd"};
     if (currStack->headOfStack != NULL && ((currStack->stackSize-1) != 0)){
         chdir(currStack->headOfStack->next->dir);
         free(currStack->headOfStack->dir);
         currStack->headOfStack = currStack->headOfStack->next;
         currStack->stackSize--;
-        fprintCommand(theCommand, 0);
+        fprintf(stderr, "+ completed '%s' [%d]\n", 
+                "popd", 0);
     }
     else{
         fprintf(stderr, "Error: directory stack empty\n");
-        fprintCommand(theCommand, 1);
+        fprintf(stderr, "+ completed '%s' [%d]\n",
+                "popd", 1);
         return;
     }
 }
@@ -599,10 +600,6 @@ int main(void){
                 *nl = '\0';
         }
         /* Builtin command */
-        // this is the command for exit
-        // the is the command for pwd 
-        //printArgs(&currCommand);
-        //createProcess(&currCommand, cmdCopy);
         // Check if user entered any arguments, if not then ask again
         if(cmd[0] == '\0'){
             fprintf(stderr, "Error: no arguments entered\n");
