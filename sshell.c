@@ -89,11 +89,11 @@ void pop(struct stack *currStack){
         free(currStack->headOfStack->dir);
         currStack->headOfStack = currStack->headOfStack->next;
         currStack->stackSize--;
-        fprintCommand((char *)"popd", 0);
+        fprintCommand("popd", 0);
     }
     else{
         fprintf(stderr, "Error: directory stack empty\n");
-        fprintCommand((char*)"popd", 1);
+        fprintCommand("popd", 1);
         return;
     }
 }
