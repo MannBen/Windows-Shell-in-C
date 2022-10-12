@@ -1,8 +1,8 @@
 sshell: sshell.o
-	g++ -std=c++0x -Wall -Wextra -Werror sshell.o -o sshell
+	gcc sshell.o -o sshell
 
 sshell.o: sshell.c
-	g++ -c sshell.c
+	gcc -Wall -Wextra -Werror -c sshell.c
 
 clean:
-	rm -rf sshell.o 	sshell
+	rm -rf sshell.o sshell
