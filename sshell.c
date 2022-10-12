@@ -63,7 +63,7 @@ struct stackNode{ //stack entyr
   struct stackNode *next;
 };
 struct stack *createNew(void){
-  struct stack *stackRet = (stackRet*)xmalloc(sizeof(*stackRet));
+  struct stack *stackRet = (stack*)xmalloc(sizeof(*stackRet));
   if (stackRet){ //if successful malloc initialize stack vars
     stackRet->headOfStack = NULL;
     stackRet->stackSize = 0;
