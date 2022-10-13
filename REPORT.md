@@ -19,12 +19,16 @@ This program will create a shell that will take command-line inputs and execute 
 
 ## Implementation
 
+1. Parsing the command line arguments and identifying behavior of each command and storing them in a struct and linking them with a doubly linked list. 
+2. Executing commands successfully based on their system calls or recognizing proper misbehavior and reporting the specific error to the terminal
+3. Displaying return statuses in a completion message and then continuously prompting the user to enter another command after execution until they want to exit
 
-
-### Parsing Options
+### Parsing Implementation 
 
 We begin our execution with creating a data structure which will contain the data of our commands. Our struct `aCommand` contains:
-	`processName which contains the command ` 
+	_processName_ `which contains the main command to be executed`
+	_redirectFileName_ `which contains the filename if a file will need to be manipulated, it also serves as a way for us to identify if output or input redirection is needed` 
+	_arguments[ARGS_MAX]_ `which contains an array of arguements for the command with a limitation of 16 arguments`
 // explain struct
 
 // explain doubly linked list 
@@ -34,10 +38,17 @@ Here is a simple footnote [^2]
 
 // Simple commands
 
-// 
+// File manipulation 
+	// input redirection
+	// output redirection
+	// manipulation with piping 
+
+// Piping 
 
 ### Dealing with Memory 
 
 // talk about malloc and 
 
-### Limitations and Preculiarities 
+### Limitations and Peculiarities 
+
+Our program is limited as noted in the Project1.html document to only work with a maximum of sixteen arguments. In order to limit this, we can use our struct member `numOfArgs` to check if there are more than 16 arguemnts given. 
