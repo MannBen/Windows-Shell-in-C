@@ -12,7 +12,6 @@
 #define ARGS_MAX 16
 
 static inline void *xmalloc(size_t size){ //professors provided project 0 implementation of linked list structs
-
     void *p = malloc(size);
     return p;
 };
@@ -28,7 +27,7 @@ void fprintCommand(char cmd[CMDLINE_MAX], int status){
 }
 //linked list used to house 2-4 commands used for piping, currenly hardcoded for 2-4 but scaleability possible
 struct commandList{
-    struct commandListNode *p, *p_tail;
+    struct commandListNode *p_head, *p_tail;
     int numOfCommands;
 };
 struct commandListNode{
@@ -222,7 +221,7 @@ void createProcessWithInputRedirection(struct aCommand *currCommand){
 void createPipes(struct commandList *cmdList){
     struct commandListNode *access = xmalloc(sizeof(struct commandListNode));
     //struct commandListNode *print = xmalloc(sizeof(struct commandListNode));
-    access = cmdList->p;
+    access = cmdList->p_head;
     //print = access;
     int status;
     // while (print != NULL){
@@ -282,7 +281,7 @@ void createPipes(struct commandList *cmdList){
             access = access->next;
         }
     }
-    access = cmdList->p;
+    access = cmdList->p_head;
 
     int* statusArr = malloc(cmdList->numOfCommands);
 
@@ -293,7 +292,7 @@ void createPipes(struct commandList *cmdList){
             access = access->next;
         }
     }
-    access = cmdList->p;
+    access = cmdList->p_head;
     fprintf(stderr, "+ completed '%s' ", access->command->cmdSave);
     
     // print out the number of commands 
@@ -324,7 +323,7 @@ void parseInPipes(struct commandList cmdList, char cmd[CMDLINE_MAX]){
     int argumentPos = 1, cmdItr = 1, newCMD = 0;
     char *replace;
     strncpy(currCommandOne.cmdSave, cmd, CMDLINE_MAX); //saves initial untokenized cmdIn
-    char * token = strtok(cmd, " "); // take initial token
+    char * token = strtok(cmd, " ");// take initial token 
     currCommandOne.arguments[0] = token; //set initial arg0
     if (strchr(currCommandOne.arguments[0], '|')){
             fprintf(stderr,"Error: Missing command\n");
@@ -332,7 +331,7 @@ void parseInPipes(struct commandList cmdList, char cmd[CMDLINE_MAX]){
     }
     currCommandOne.processName = currCommandOne.arguments[0]; // set process name for command 1
     while (token != NULL){
-    //    printf("\ttokens: %s\t%d\n",token, argumentPos);
+            //printf("\ttokens before: %s\t%d\n",token, argumentPos);
         token = strtok(NULL, " ");
         if (newCMD && token == NULL){
             fprintf(stderr,"Error: Missing command\n");
@@ -340,68 +339,98 @@ void parseInPipes(struct commandList cmdList, char cmd[CMDLINE_MAX]){
         }            
         if (token != NULL && (!strchr(token, '|'))){ //token is confirmed not null and is not the pipe character signifying a new command will follow
             if (cmdItr == 1){
-                if((replace = strchr(token, '<'))) {
-                    *replace = ' ';
-                    if(strlen(token) > 1) {
-                        token = strtok(token, " ");
-                        currCommands->arguments[argumentsPos++];
-                    }
-                    token = strtok(NULL, " ");
-                    currCommandOne.redirectFileName = token;
-                }  
-                else if(strchr(token, '>')) {
+                if(strchr(token, '>')) {
                     fprintf(stderr,"Error: mislocated output redirection\n");
                     return;
                 }
-                currCommandOne.arguments[argumentPos] = token;
+                else if((replace = strchr(token, '<'))) {
+                    *replace = ' ';
+                    if(strlen(token) > 1) { //handle no spaces between command<file
+                        printf("\ttokens: %s\t%d\n",token, argumentPos);
+                        currCommandOne.arguments[argumentPos] = strtok_r(token, " ", &token);
+                        currCommandOne.redirectFileName = strtok_r(token, " ", &token);
+                    }
+                    else{
+                        token = strtok(NULL, " "); //get file
+                        currCommandOne.redirectFileName = token;
+                    }
+                }  
+                else{
+                    // printf("\ttokens else: %s\t%d\n",token, argumentPos);
+                    currCommandOne.arguments[argumentPos] = token;
+                }
                 //printf("after add: %s\t%d",currCommandOne.arguments[argumentPos], argumentPos);
                 argumentPos++;
-                currCommandOne.numOfArgs = argumentPos;
-            //   printf("b4 add: %s\t%d\n",currCommandOne.arguments[argumentPos], argumentPos);
-                // if(strchr(token, '<')) {
-                //     fprintf(stderr, "Error: mislocated output redirection\n");
-                //     return;
-                // }      
+                currCommandOne.numOfArgs = argumentPos;   
+                //printf("\ttokens in cmdit1: %s\n",token); 
             }
             else if (cmdItr == 2){
-                if(strchr(token, '>')) {
-                    token = strtok(NULL, " ");
-                    currCommandTwo.redirectFileName = token;
-                }
-                else if(strchr(token, '<')) {
+                 if(strchr(token, '<')) {
                     fprintf(stderr,"Error: mislocated input redirection\n");
                     return;
-                }  
-                currCommandTwo.arguments[argumentPos] = token;
-                currCommandTwo.processName = currCommandTwo.arguments[0];
+                } 
+                else if((replace = strchr(token, '>'))) {
+                    *replace = ' ';
+                    if(strlen(token) > 1) { //handle no spaces between command<file
+                        // printf("\ttokens: %s\t%d\n",token, argumentPos);
+                        currCommandTwo.arguments[argumentPos] = strtok_r(token, " ", &token);
+                        currCommandTwo.redirectFileName = strtok_r(token, " ", &token);
+                    }
+                    else{
+                        token = strtok(NULL, " "); //get file
+                        currCommandTwo.redirectFileName = token;
+                        // printf("\tfilename: %s\t%d\n",currCommandTwo.redirectFileName, argumentPos);
+                    }
+                } 
+                else{
+                    currCommandTwo.arguments[argumentPos] = token;
+                }
                 argumentPos++;
                 currCommandTwo.numOfArgs = argumentPos;
             }
             else if (cmdItr == 3){
-                if(strchr(token, '>')) {
-                    token = strtok(NULL, " ");
-                    currCommandThree.redirectFileName = token;
-                }
-                else if(strchr(token, '<')) {
+                if(strchr(token, '<')) {
                     fprintf(stderr,"Error: mislocated input redirection\n");
                     return;
+                } 
+                else if((replace = strchr(token, '>'))) {
+                    *replace = ' ';
+                    if(strlen(token) > 1) { //handle no spaces between command<file
+                        printf("\ttokens: %s\t%d\n",token, argumentPos);
+                        currCommandThree.arguments[argumentPos] = strtok_r(token, " ", &token);
+                        currCommandThree.redirectFileName = strtok_r(token, " ", &token);
+                    }
+                    else{
+                        token = strtok(NULL, " "); //get file
+                        currCommandThree.redirectFileName = token;
+                    }
                 }  
-                currCommandThree.arguments[argumentPos] = token;
-                currCommandThree.processName = currCommandThree.arguments[0];
+                else{
+                    currCommandThree.arguments[argumentPos] = token;
+                }
                 argumentPos++;
                 currCommandThree.numOfArgs = argumentPos;
             }
             else if (cmdItr == 4){
                 if(strchr(token, '>')) {
-                    token = strtok(NULL, " ");
-                    currCommandFour.redirectFileName = token;
-                }
-                else if(strchr(token, '<')) {
                     fprintf(stderr,"Error: mislocated input redirection\n");
                     return;
+                } 
+                else if((replace = strchr(token, '>'))) {
+                    *replace = ' ';
+                    if(strlen(token) > 1) { //handle no spaces between command<file
+                        printf("\ttokens: %s\t%d\n",token, argumentPos);
+                        currCommandFour.arguments[argumentPos] = strtok_r(token, " ", &token);
+                        currCommandFour.redirectFileName = strtok_r(token, " ", &token);
+                    }
+                    else{
+                        token = strtok(NULL, " "); //get file
+                        currCommandFour.redirectFileName = token;
+                    }
                 }  
-                currCommandFour.arguments[argumentPos] = token;
-                currCommandFour.processName = currCommandFour.arguments[0];
+                else{
+                     currCommandFour.arguments[argumentPos] = token;
+                }
                 argumentPos++;
                 currCommandFour.numOfArgs = argumentPos;
             }
@@ -413,6 +442,7 @@ void parseInPipes(struct commandList cmdList, char cmd[CMDLINE_MAX]){
             //     fprintf(stderr,"Error: Missing command\n");
             //     return;
             // }
+            
             currCommandOne.arguments[argumentPos+2] = NULL;//set last arg as null for execvp requirments
             argumentPos = 0;//reset argpost for next command
             cmdItr++;//move to next command
@@ -420,46 +450,50 @@ void parseInPipes(struct commandList cmdList, char cmd[CMDLINE_MAX]){
         }
     }
 
+    currCommandFour.processName = currCommandFour.arguments[0]; //initialize program processNames
+    currCommandThree.processName = currCommandThree.arguments[0];
+    currCommandTwo.processName = currCommandTwo.arguments[0];
+
     for (int i = 0; i < cmdList.numOfCommands; i++){
-        struct commandListNode *p = xmalloc(sizeof(struct commandListNode));
+        struct commandListNode *newNode = xmalloc(sizeof(struct commandListNode));
         if (i == 0){
-            p->command = &currCommandOne;
+            newNode->command = &currCommandOne;
         }
         else if (i == 1){
-            p->command = &currCommandTwo;
+            newNode->command = &currCommandTwo;
             if (i != cmdList.numOfCommands-1 && currCommandTwo.redirectFileName != NULL){
                 fprintf(stderr,"Error: mislocated output redirection\n");
                 return;
             }
         }
         else if (i == 2){
-            p->command = &currCommandThree;
+            newNode->command = &currCommandThree;
             if (i != cmdList.numOfCommands-1 && currCommandThree.redirectFileName != NULL){
                 fprintf(stderr,"Error: mislocated output redirection\n");
                 return;
             }
         }
         else if (i == 3){
-            p->command = &currCommandFour;
+            newNode->command = &currCommandFour;
         }
 
-        p->next = NULL;
-        p->prev = NULL;
+        newNode->next = NULL;
+        newNode->prev = NULL;
     // printArgs(cmdList.p->command->arguments);
-        if (!cmdList.p){
-            cmdList.p = p;
-            cmdList.p_tail = p;
+        if (!cmdList.p_head){
+            cmdList.p_head = newNode;
+            cmdList.p_tail = newNode;
             //  printArgs(cmdList.p->command);
         }
         else{
-            p->prev = cmdList.p_tail;
-            cmdList.p_tail->next = p;
-            cmdList.p_tail = p;
+            newNode->prev = cmdList.p_tail;
+            cmdList.p_tail->next = newNode;
+            cmdList.p_tail = newNode;
             // printArgs(cmdList.p->next->command);
         }
     }
     struct commandListNode *print = xmalloc(sizeof(struct commandListNode));
-     print = cmdList.p;
+    print = cmdList.p_head;
     while (print != NULL){
         printArgs(print->command);
         print = print->next;
