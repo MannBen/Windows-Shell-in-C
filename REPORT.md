@@ -35,7 +35,8 @@ maximum of 512 <br>
 >>**numOfArgs**: The number of arguments allows us to
 ensure that arguments in specific commands are parsed correctly and to error
 check the maximum number of arguments <br>
->>**fd[2] & pid**: The strategy of
+>>**fd[2]**:
+>>**pid**: The strategy of
 each command having their own file descriptors and pid is shown in our piping in
 which we iterate through each command and will need to identify the current
 command's pid and file descriptor. <br>
