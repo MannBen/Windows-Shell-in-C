@@ -155,7 +155,7 @@ void createProcessWithOutputRedirection(struct aCommand *currCommand){
             fprintf(stderr, "Error: no output file\n");
             return;
         }
-        if((toFileFD = open(currCommand->redirectFileName, O_WRONLY, 0644)) == -1 || strchr(currCommand->redirectFileName, '/')) {
+        if((toFileFD = open(currCommand->redirectFileName, O_WRONLY | O_CREAT, 0644)) == -1 || strchr(currCommand->redirectFileName, '/')) {
             fprintf(stderr, "Error: cannot open output file\n");
             return;
         }
@@ -257,7 +257,7 @@ void createPipes(struct commandList *cmdList){
                 close(access->prev->command->fd[0]);
 
                 if (access->command->redirectFileName != NULL){
-                    int toFileFD = open(access->command->redirectFileName, O_WRONLY, 0644);
+                    int toFileFD = open(access->command->redirectFileName, O_WRONLY | O_CREAT, 0644);
                     dup2(toFileFD, STDOUT_FILENO); //replace stdout
                     close(toFileFD);
                 }
@@ -322,6 +322,7 @@ void parseInPipes(struct commandList cmdList, char cmd[CMDLINE_MAX]){
 
 
     int argumentPos = 1, cmdItr = 1, newCMD = 0;
+    char *replace;
     strncpy(currCommandOne.cmdSave, cmd, CMDLINE_MAX); //saves initial untokenized cmdIn
     char * token = strtok(cmd, " "); // take initial token
     currCommandOne.arguments[0] = token; //set initial arg0
@@ -339,7 +340,12 @@ void parseInPipes(struct commandList cmdList, char cmd[CMDLINE_MAX]){
         }            
         if (token != NULL && (!strchr(token, '|'))){ //token is confirmed not null and is not the pipe character signifying a new command will follow
             if (cmdItr == 1){
-                if(strchr(token, '<')) {
+                if((replace = strchr(token, '<'))) {
+                    *replace = ' ';
+                    if(strlen(token) > 1) {
+                        token = strtok(token, " ");
+                        currCommands->arguments[argumentsPos++];
+                    }
                     token = strtok(NULL, " ");
                     currCommandOne.redirectFileName = token;
                 }  
