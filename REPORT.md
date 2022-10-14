@@ -88,10 +88,6 @@ number of commands in a for loop and identify if it is the first command, the
 middle command, or the last command. We then execute the commands and once they
 have all ran, we then wait for the status values and print them to the terminal.
 
-### Dealing with Memory
-
-// talk about malloc and stuff
-
 ### Limitations and Peculiarities
 
 Our program is limited as noted in the Project1.html document to only work with
