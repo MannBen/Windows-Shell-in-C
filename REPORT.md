@@ -4,13 +4,14 @@
 
 This program creates a shell that will take command-line inputs and execute
 them in proper order. This is done through a single C file, **sshell.c** , 
-which implements the aforementioned shell and parses the command-line arguments
-in accordance with standard Linux formats while catching any errors. This shell will then execute various system calls and builtin functions with an 
-emphasis on processes, files, and pipes to complete the parsed commands.
+which implements the aforementioned shell and parses the command-line 
+arguments in accordance with standard Linux formats while catching any errors. This shell will then execute various system calls and builtin functions with 
+an emphasis on processes, files, and pipes to complete the parsed commands.
 
 ## Implementation
 
-1. Parsing the command line arguments and identifying behavior of each command.
+1. Parsing the command line arguments and identifying behavior of each 
+command.
 2. Storing every command in its own struct object and forming a doubly linked 
 list with those struct objects. 
 3. Executing single or multiple commands successfully based on their system 
@@ -46,8 +47,8 @@ line with a max of 16 arguments, this allows us to identify specific
 syscalls and manipulate the information given <br>  
 
 >>**cmdSave[CMDLINE_MAX]**: A
-copy of the original command line for printing out the completion message with a
-maximum of 512 characters<br>
+copy of the original command line for printing out the completion message with 
+a maximum of 512 characters<br>
 
 >>**numOfArgs**: The number of arguments allows us to
 ensure that arguments in specific commands are parsed correctly and to error
