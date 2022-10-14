@@ -1,4 +1,4 @@
-```
+``
 # Simple Shell
 
 ## Summary
@@ -144,4 +144,5 @@ Giving credit to Joël Porquet-Lupine Project 0: sgrep.c from ECS150 Fall 2022
 
 Referenced to create our pushd and popd stack:
 https://stackoverflow.com/questions/1919975/creating-a-stack-of-strings-in-c
-```
+
+``
