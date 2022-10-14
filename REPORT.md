@@ -136,7 +136,7 @@ https://www.tutorialspoint.com/c_standard_library/index.htm
 Create process and piping:
 Lecture 3.syscalls -slide 20 and 39
 
-Referenced project 0 and modified in our program to be a doubly linked list
+Referenced project 0 and modified in our program to be a doubly linked list.
 Giving credit to Joël Porquet-Lupine Project 0: sgrep.c from ECS150 Fall 2022 
 
 Referenced to create our pushd and popd stack:
