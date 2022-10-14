@@ -5,7 +5,8 @@
 This program creates a shell that will take command-line inputs and execute
 them in proper order. This is done through a single C file, **sshell.c** , 
 which implements the aforementioned shell and parses the command-line 
-arguments in accordance with standard Linux formats while catching any errors. This shell will then execute various system calls and builtin functions with 
+arguments in accordance with standard Linux formats while catching any errors. 
+This shell will then execute various system calls and builtin functions with 
 an emphasis on processes, files, and pipes to complete the parsed commands.
 
 ## Implementation
