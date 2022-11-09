@@ -56,8 +56,8 @@ struct stackNode{//stack enter
 struct stack *createNew(void){//initialize link list stack
     struct stack *stackRet = xmalloc(sizeof(*stackRet));//malloc with no free <-fix
     if (stackRet){//if successful malloc initialize stack vars
-    stackRet->headOfStack = NULL;
-    stackRet->stackSize = 0;
+        stackRet->headOfStack = NULL;
+        stackRet->stackSize = 0;
     }
     return stackRet;//return struct object to caller
 };
